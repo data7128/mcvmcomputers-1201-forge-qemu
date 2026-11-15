@@ -65,11 +65,18 @@ public final class QemuProcess {
 
         if (disk != null) {
             cmd.add("-drive");
-            cmd.add("file=" + disk.getAbsolutePath() + ",format=qcow2,if=ide,index=0,media=disk");
+            cmd.add("file=" + disk.getAbsolutePath() + ",format=" + detectFormat(disk)
+                    + ",if=ide,index=0,media=disk");
         }
         if (iso != null && iso.exists()) {
             cmd.add("-drive");
             cmd.add("file=" + iso.getAbsolutePath() + ",format=raw,if=ide,index=1,media=cdrom");
+            // 有光盘时优先从光盘启动（空硬盘 + 引导 ISO 的常见场景）
+            cmd.add("-boot");
+            cmd.add("order=dc");
+        } else {
+            cmd.add("-boot");
+            cmd.add("order=c");
         }
 
         ProcessBuilder pb = new ProcessBuilder(cmd);
@@ -105,6 +112,25 @@ public final class QemuProcess {
             }
             process = null;
         }
+    }
+
+    /** 按扩展名判断镜像格式（用户可能沿用旧的 .vdi / .vmdk 硬盘）。 */
+    static String detectFormat(File disk) {
+        String n = disk.getName().toLowerCase();
+        if (n.endsWith(".qcow2") || n.endsWith(".qcow")) {
+            return "qcow2";
+        }
+        if (n.endsWith(".vdi")) {
+            return "vdi";
+        }
+        if (n.endsWith(".vmdk")) {
+            return "vmdk";
+        }
+        if (n.endsWith(".raw") || n.endsWith(".img")) {
+            return "raw";
+        }
+        // 未知扩展名交给 QEMU 探测
+        return "qcow2";
     }
 
     /** 完整命令行（用于日志/调试）。 */
