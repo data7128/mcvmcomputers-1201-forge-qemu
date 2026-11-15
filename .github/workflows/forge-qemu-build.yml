@@ -64,16 +64,17 @@ jobs:
           mkdir -p src/main/resources/assets/qemu
           cp qemu-system-x86_64 src/main/resources/assets/qemu/
           cp qemu-img src/main/resources/assets/qemu/
-          cat > src/main/resources/assets/qemu/README.md <<'EOF'
-# QEMU binaries for Android ARM64
-
-Static aarch64 Linux ELF builds of `qemu-system-x86_64` and `qemu-img`,
-bundled so the mod can run real VMs on Android (FCL / PojavLauncher)
-without VirtualBox.
-
-Extracted to `<gameDir>/vm_computers/bin/` on first use and `chmod +x`'d
-by `newvmcomputers.vm.AndroidBinLoader`.
-EOF
+          printf '%s\n' \
+            '# QEMU binaries for Android ARM64' \
+            '' \
+            'Static aarch64 Linux ELF builds of qemu-system-x86_64 and qemu-img,' \
+            'bundled so the mod can run real VMs on Android (FCL / PojavLauncher)' \
+            'without VirtualBox.' \
+            '' \
+            'Extracted to <gameDir>/vm_computers/bin/ on first use and chmod +x'"'"'d' \
+            'by newvmcomputers.vm.AndroidBinLoader.' \
+            > src/main/resources/assets/qemu/README.md
+          ls -lh src/main/resources/assets/qemu/
 
       - name: Build mod
         run: |
