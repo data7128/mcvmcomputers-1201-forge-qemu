@@ -1,0 +1,91 @@
+name: 1.20.1 Forge QEMU Build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-qemu:
+    name: 编译 ARM64 静态 QEMU
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build QEMU statically (Alpine arm64 container)
+        run: |
+          docker run --rm -v "$PWD":/build \
+            -e QEMU_VERSION=8.2.4 \
+            alpine:3.20 /bin/sh /build/.github/workflows/qemu-alpine-build.sh
+
+      - name: Verify binaries
+        run: |
+          ls -lh qemu-system-x86_64 qemu-img
+          file qemu-system-x86_64 qemu-img
+
+      - name: Upload QEMU binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-android-arm64
+          path: |
+            qemu-system-x86_64
+            qemu-img
+
+  build-mod:
+    name: 编译 1.20.1 Forge mod
+    needs: build-qemu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: forge-qemu-${{ runner.os }}-${{ hashFiles('gradle.properties', 'build.gradle') }}
+
+      - name: Download QEMU binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: qemu-android-arm64
+
+      - name: Bundle QEMU into mod resources
+        run: |
+          mkdir -p src/main/resources/assets/qemu
+          cp qemu-system-x86_64 src/main/resources/assets/qemu/
+          cp qemu-img src/main/resources/assets/qemu/
+          cat > src/main/resources/assets/qemu/README.md <<'EOF'
+# QEMU binaries for Android ARM64
+
+Static aarch64 Linux ELF builds of `qemu-system-x86_64` and `qemu-img`,
+bundled so the mod can run real VMs on Android (FCL / PojavLauncher)
+without VirtualBox.
+
+Extracted to `<gameDir>/vm_computers/bin/` on first use and `chmod +x`'d
+by `newvmcomputers.vm.AndroidBinLoader`.
+EOF
+
+      - name: Build mod
+        run: |
+          chmod +x gradlew
+          ./gradlew build --stacktrace --no-daemon
+
+      - name: List jars
+        run: ls -lh build/libs/
+
+      - name: Upload mod jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: mod-forge-1201-qemu
+          path: build/libs/*.jar
+          if-no-files-found: error

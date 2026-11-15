@@ -1,0 +1,12 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "newvmcomputers.mixins",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "newvmcomputers.refmap.json",
+  "mixins": [],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
